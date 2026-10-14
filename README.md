@@ -1,16 +1,35 @@
-# Court Command — Demo
+# Court Command
 
-This branch contains a repaired, simplified playable demo of Court Command.
+A playable college volleyball management game prototype built as a single-page web app.
 
-How to run locally:
-- npm install (optional)
-- npm start
-- Open http://localhost:3000
+## Play it locally
 
-How to use in Codespaces:
-- Open this repo in Codespaces. The devcontainer will provide Node and a static server.
-- Run the `start` script in the terminal.
+1. Open `court-command.html` directly in a browser, or
+2. Use a static server in the repo root and open `http://localhost:3000`.
 
-Notes:
-- This is a minimal, single-file demo (index.html) extracted and repaired from the original court-command.html.
-- Many advanced features were stubbed to restore a working baseline. We can iteratively restore recruiting, tournaments, and UI.
+Example:
+
+```bash
+python3 -m http.server 3000
+```
+
+Then open:
+
+http://localhost:3000/
+
+## What you can do
+
+- Start a new season
+- Simulate a week of play
+- Recruit prospects
+- Track team record, budget, and roster
+- Follow a news feed while the season unfolds
+
+## Files
+
+- `index.html` — redirects to the playable demo
+- `court-command.html` — the actual game page
+
+## Notes
+
+This is a simplified playable version meant to be easy to run and easy to expand.
