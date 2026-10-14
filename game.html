@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Court Command — Play</title>
+  <style>
+    body{font-family:Inter,system-ui,Segoe UI,Arial;margin:0;background:#f3f7f5;color:#072018}
+    .wrap{max-width:980px;margin:20px auto;padding:18px}
+    .top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    button{padding:8px 12px;border-radius:8px;border:1px solid #d8e3e0;background:#fff;cursor:pointer}
+    button.primary{background:#1b63c3;color:#fff;border-color:#1b63c3}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-top:16px}
+    .panel{background:#fff;padding:12px;border-radius:12px;border:1px solid #e1e9e6}
+    ul{padding-left:16px}
+    .muted{color:#6b7b78}
+    .stat{display:flex;gap:10px;align-items:center}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .hidden{display:none}
+    .file{display:flex;gap:8px;align-items:center}
+    pre{white-space:pre-wrap;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1 style="margin:0">Court Command — Play</h1>
+      <div class="actions" style="margin-left:auto">
+        <button id="newBtn" class="primary">New Season</button>
+        <button id="playBtn">Play Week</button>
+        <button id="recBtn">Recruit</button>
+        <button id="saveBtn">Save</button>
+        <button id="loadBtn">Load</button>
+        <button id="exportBtn">Export</button>
+        <label style="margin:0" class="file"><input id="importFile" type="file" accept="application/json" style="display:none"><button id="importBtn">Import</button></label>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="stat"><strong>School:</strong><div id="school" class="muted">—</div></div>
+        <div class="stat"><strong>Week:</strong><div id="week" class="muted">1</div></div>
+        <div class="stat"><strong>Record:</strong><div id="record" class="muted">0-0</div></div>
+        <div style="height:12px"></div>
+        <h3 style="margin:6px 0">Roster</h3>
+        <ul id="roster"></ul>
+
+        <h3 style="margin:12px 0 6px">Match</h3>
+        <div id="match" class="muted">No opponent</div>
+
+        <h3 style="margin:12px 0 6px">News</h3>
+        <div id="news"></div>
+      </div>
+
+      <div class="panel">
+        <h3 style="margin:0 0 8px">Prospects</h3>
+        <ul id="prospects"></ul>
+        <hr>
+        <div style="margin-top:10px">
+          <strong>Autosave:</strong>
+          <input id="autoSave" type="checkbox" checked>
+        </div>
+        <div style="margin-top:10px">
+          <strong>Import / Export</strong>
+          <div class="muted" style="font-size:13px">Export will download a JSON backup of your current game.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Lightweight playable engine — small, extendable
+    const first = ['Emma','Olivia','Ava','Mia','Harper','Ella','Chloe','Avery','Riley','Peyton'];
+    const last = ['Johnson','Smith','Brown','Davis','Miller','Wilson','Moore','Taylor'];
+    const schools = ['Northlake','Riverbend','Summit','Oaks','Crestview','Greenfield'];
+    const mascots = ['Eagles','Huskies','Bears','Waves','Falcons'];
+    const positions = ['Setter','OH','MB','Opposite','Libero','DS'];
+    const rand = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+    const pick = a=>a[Math.floor(Math.random()*a.length)];
+
+    let state = { week:1, budget:450000, record:{wins:0,losses:0}, team:'', roster:[], prospects:[], opponent:null, news:[] };
+
+    function makePlayer(pos){ return { id:Date.now()+Math.random(), name: pick(first)+' '+pick(last), position:pos||pick(positions), rating:rand(65,92), mood:rand(60,90) } }
+    function makeProspect(){ return { id:Date.now()+Math.random(), name: pick(first)+' '+pick(last), position:pick(positions), rating:rand(70,97), fit:rand(50,95) } }
+
+    function startSeason(){
+      state.team = pick(schools)+' '+pick(mascots);
+      state.week = 1; state.budget = 450000; state.record = {wins:0,losses:0};
+      state.roster = [makePlayer('Setter'), makePlayer('OH'), makePlayer('OH'), makePlayer('MB'), makePlayer('MB'), makePlayer('Opposite'), makePlayer('Libero')];
+      state.prospects = [makeProspect(), makeProspect(), makeProspect()];
+      state.opponent = { name: pick(schools)+' '+pick(mascots), rating: rand(66, 90) };
+      state.news.unshift(state.team+' begins the season.');
+      render();
+      autoSaveIfOn();
+    }
+
+    function playWeek(){
+      if(!state.team) startSeason();
+      state.opponent = { name: pick(schools)+' '+pick(mascots), rating: rand(66, 90) };
+      const avg = state.roster.reduce((s,p)=>s+p.rating,0)/state.roster.length;
+      const winChance = Math.max(.2, Math.min(.8, (avg - state.opponent.rating + 20)/60));
+      const win = Math.random()<winChance;
+      const score = win? '3-'+rand(0,2) : rand(0,2)+'-3';
+      if(win){ state.record.wins++; state.budget += 120000; state.news.unshift(state.team+ ' beats '+state.opponent.name+' '+score); }
+      else{ state.record.losses++; state.budget = Math.max(0, state.budget - 45000); state.news.unshift(state.team+ ' falls to '+state.opponent.name+' '+score); }
+      state.roster = state.roster.map(p=>({ ...p, rating: Math.max(60, Math.min(99, p.rating + (win?1:-1) + rand(-2,2))), mood: Math.max(40, Math.min(100, p.mood + (win?2:-3))) }));
+      state.prospects = [makeProspect(), makeProspect(), makeProspect()];
+      state.week++; render(); autoSaveIfOn();
+    }
+
+    function recruit(){ if(!state.team) startSeason(); if(state.prospects.length===0) return; const r = state.prospects.shift(); const avg = state.roster.reduce((s,p)=>s+p.rating,0)/state.roster.length; if(r.rating>avg || r.fit>70){ state.roster.push(r); state.budget -= 50000; state.news.unshift(r.name+' commits to '+state.team); } else { state.news.unshift(r.name+' is still deciding.'); } state.prospects = [makeProspect(), makeProspect(), makeProspect()]; render(); autoSaveIfOn(); }
+
+    function render(){
+      document.getElementById('school').textContent = state.team || 'Unassigned';
+      document.getElementById('week').textContent = state.week;
+      document.getElementById('record').textContent = state.record.wins+'-'+state.record.losses;
+      document.getElementById('roster').innerHTML = state.roster.map(p=>`<li><strong>${p.name}</strong> <span class="muted">${p.position}</span> — <em>${p.rating}</em> (${p.mood}%)</li>`).join('');
+      document.getElementById('prospects').innerHTML = state.prospects.map((r,i)=>`<li><strong>${r.name}</strong> <span class="muted">${r.position}</span> — ${r.rating} <button data-i="${i}">Offer</button></li>`).join('');
+      document.getElementById('match').textContent = state.opponent? (state.opponent.name+' — rating '+state.opponent.rating) : 'No opponent';
+      document.getElementById('news').innerHTML = state.news.slice(0,8).map(n=>`<div>${n}</div>`).join('');
+      // add prospect buttons
+      document.querySelectorAll('#prospects button').forEach(btn=>btn.addEventListener('click',()=>{ const i = Number(btn.dataset.i); makeOffer(i); }));
+    }
+
+    function makeOffer(i){ const r = state.prospects[i]; if(!r) return; // immediate simple offer -> recruit attempt
+      // small chance based on fit
+      if(r.fit>65 || r.rating > (state.roster.reduce((s,p)=>s+p.rating,0)/state.roster.length)){
+        state.roster.push(r); state.prospects.splice(i,1); state.news.unshift(r.name+' accepted your offer!'); state.budget -= 50000;
+      } else {
+        state.news.unshift(r.name+' ignored your offer.');
+      }
+      render(); autoSaveIfOn();
+    }
+
+    // Save / Load / Export / Import
+    const STORAGE_KEY = 'court-command-save-v1';
+    function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); alert('Saved'); } catch(e){ alert('Save failed: '+e.message); } }
+    function load(){ try{ const s = localStorage.getItem(STORAGE_KEY); if(!s){ alert('No save found'); return; } state = JSON.parse(s); render(); alert('Loaded'); } catch(e){ alert('Load failed: '+e.message); } }
+    function exportSave(){ const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'court-command-save.json'; a.click(); URL.revokeObjectURL(url); }
+    function importSave(file){ const reader = new FileReader(); reader.onload = ()=>{ try{ state = JSON.parse(reader.result); render(); alert('Imported'); } catch(e){ alert('Import failed: '+e.message); } }; reader.readAsText(file); }
+
+    // Autosave
+    function autoSaveIfOn(){ if(document.getElementById('autoSave').checked){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){} } }
+
+    document.getElementById('newBtn').addEventListener('click', startSeason);
+    document.getElementById('playBtn').addEventListener('click', playWeek);
+    document.getElementById('recBtn').addEventListener('click', recruit);
+    document.getElementById('saveBtn').addEventListener('click', save);
+    document.getElementById('loadBtn').addEventListener('click', load);
+    document.getElementById('exportBtn').addEventListener('click', exportSave);
+    document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change', e=>{ if(e.target.files.length) importSave(e.target.files[0]); });
+
+    // Initialize
+    if(!localStorage.getItem(STORAGE_KEY)){ startSeason(); } else { try{ state = JSON.parse(localStorage.getItem(STORAGE_KEY)); render(); } catch(e){ startSeason(); } }
+  </script>
+</body>
+</html>
