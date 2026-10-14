@@ -1,0 +1,5 @@
+{
+  "name": "Court Command Codespaces",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:0-20",
+  "postCreateCommand": "npm install || true"
+}
