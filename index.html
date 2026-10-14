@@ -1,164 +1,20 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Court Command (Demo)</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Court Command — Redirect</title>
+  <meta http-equiv="refresh" content="0; url=./court-command.html">
   <style>
-    /* Minimal styling adapted from original */
-    :root{--bg:#edf1ef;--surf:#fff;--ink:#0f1c19;--acc:#1b5fb3;--line:#d2dad6;--mute:#55645f;--f-disp:'Barlow Condensed',Impact,sans-serif;--f-body:'Barlow',system-ui,Segoe UI,sans-serif}
-    *{box-sizing:border-box}html,body{height:100%;margin:0;font-family:var(--f-body);background:var(--bg);color:var(--ink)}
-    .wrap{max-width:980px;margin:16px auto;padding:0 16px}
-    .hdr{background:var(--surf);padding:12px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;gap:12px}
-    h1{font-family:var(--f-disp);margin:0;font-size:20px}
-    .controls{display:flex;gap:8px;align-items:center}
-    button{cursor:pointer;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surf)}
-    .card{background:var(--surf);padding:12px;border-radius:8px;border:1px solid var(--line);margin-top:12px}
-    .row{display:flex;gap:12px}
-    .col{flex:1}
-    ul{padding-left:20px}
-    pre{white-space:pre-wrap}
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f3f7f5;color:#0f1c19}
+    .box{max-width:680px;padding:24px;border-radius:12px;background:#fff;border:1px solid #e2e8e5;box-shadow:0 8px 24px rgba(11,22,18,.06);text-align:center}
+    a{color:#1966c6;font-weight:700}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="hdr">
-      <h1>Court Command (Playable Demo)</h1>
-      <div style="flex:1"></div>
-      <div class="controls">
-        <select id="teamSelect"></select>
-        <select id="styleSelect">
-          <option value="recruiter">Recruiter</option>
-          <option value="developer">Developer</option>
-          <option value="tactician">Tactician</option>
-        </select>
-        <button id="startBtn">Start New Game</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="row">
-        <div class="col">
-          <h3>News</h3>
-          <div id="news"></div>
-        </div>
-        <div class="col">
-          <h3>Controls</h3>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button id="weekBtn">Simulate Week</button>
-            <button id="seasonBtn">Simulate Season</button>
-            <button id="saveBtn">Save</button>
-            <button id="loadBtn">Load</button>
-          </div>
-          <h4>Roster (Your Team)</h4>
-          <div id="roster"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Debug / State</h3>
-      <pre id="state"></pre>
-    </div>
+  <div class="box">
+    <h1>Opening Court Command…</h1>
+    <p>If your browser doesn't redirect automatically, <a href="./court-command.html">click here to open the demo</a>.</p>
   </div>
-
-<script>'use strict';
-/* ---- Minimal engine: repaired and trimmed for demo ---- */
-const R=(a,b)=>Math.floor(Math.random()*(b-a+1))+a; const rf=()=>Math.random(); const pick=a=>a[Math.floor(Math.random()*a.length)]; const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-const gauss=()=>{let u=0,v=0;while(!u)u=rf();while(!v)v=rf();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
-const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=R(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
-const avg=a=>a.length? a.reduce((x,y)=>x+y,0)/a.length:0;
-
-const POS=['S','OH','MB','OPP','L','DS'];
-const ATTR=['atk','srv','rcv','blk','dig','set','iq','ath'];
-const PW={OH:{atk:.28,rcv:.2,srv:.12,dig:.14,blk:.06,ath:.1,iq:.1,set:0},MB:{atk:.26,blk:.30,srv:.08,ath:.16,iq:.12,dig:.08,rcv:0,set:0},S:{set:.45,iq:.2,dig:.1,srv:.1,blk:.05,ath:.1,atk:0,rcv:0},L:{rcv:.35,dig:.35,iq:.15,ath:.1,srv:.05,atk:0,blk:0,set:0},OPP:{atk:.35,blk:.2,srv:.12,ath:.15,iq:.1,dig:.08,rcv:0,set:0},DS:{dig:.4,rcv:.3,srv:.12,iq:.1,ath:.08,atk:0,blk:0,set:0}};
-const HT={S:[68,75],OH:[70,77],MB:[74,80],OPP:[72,78],L:[63,69],DS:[63,70]};
-const STYLES={recruiter:{s:{rec:74,dev:60,tac:58,cond:56}},developer:{s:{rec:56,dev:74,tac:58,cond:60}},tactician:{s:{rec:56,dev:60,tac:76,cond:56}}};
-const SCH_LIMIT=12,ROSTER_MAX=18;
-
-// Small datasets (replaced truncated lists)
-const FIRST=['Emma','Olivia','Ava','Sophia','Mia','Harper','Ella','Chloe','Madison','Avery','Lily','Hannah','Brooklyn','Riley','Peyton','Taylor','Jordan','Sydney','Kennedy','Zoe'];
-const LAST=['Johnson','Williams','Brown','Davis','Miller','Wilson','Moore','Taylor','Anderson','Thomas','Jackson','White','Harris','Martin','Thompson','Garcia','Martinez','Robinson','Clark','Lewis'];
-const CFIRST=['Mike','Dave','Chris','Sarah','Jen','Tom','Kelly','Brian','Laura','Rob','Amy','Steve','Nicole','Greg','Heather','Mark','Dana','Paul','Erin','Jeff'];
-const CITIES=['Springfield','Fairview','Georgetown','Clinton','Salem','Greenville','Bristol','Franklin','Madison','Oxford'];
-const HS_A=['Lincoln','Washington','Jefferson','Roosevelt','Central','Westlake','Riverside','Lakeview','Oakridge','Valley'];
-const HS_PRIV=['Our Lady of Grace','St. Francis','St. Mary\'s','Holy Cross','Sacred Heart','Mount Carmel','St. Ignatius','Trinity','Notre Dame Prep','Bishop Hartley'];
-
-const CONFS=[{n:'Demo Conf',ab:'Demo',s:[['State U','Eagles','CA','#154734','#C4820E',70],['City College','Sharks','CA','#003366','#FDB913',56],['Tech','Tigers','TX','#C8102E','#000000',60]]}];
-
-let S=null;
-function uid(){return S.nid++}
-function posPick(){const r=rf();return r<.12?'S':r<.40?'OH':r<.60?'MB':r<.71?'OPP':r<.83?'L':'DS'}
-function ovrOf(a,pos){const w=PW[pos];let s=0;for(const k of ATTR)s+=a[k]* (w[k]||0);return s}
-function recalc(p){p.ovr=Math.round(ovrOf(p.a,p.pos));return p}
-
-function makePlayer(stars,pos,region){pos=pos||posPick();const [hl,hh]=HT[pos];const ovr=R(40,72);const w=PW[pos],a={};for(const k of ATTR)a[k]=clamp(Math.round(ovr + ( (w[k]||0) - .125)*70 + gauss()*5),20,99);const pot=clamp(ovr+R(3,18),ovr+3,99);const p={id:uid(),name:pick(FIRST)+' '+pick(LAST),pos,ht:R(hl,hh),stars:stars||R(1,3),a,ovr,pot,yr:1,gpa:+(2.2+rf()*1.8).toFixed(2),morale:70,inj:0,region:region||0,st:pick(HS_A)};recalc(p);return p}
-
-function makeTeam(id,conf,sp){const prestige=sp[5]||50;const t={id,name:sp[0],mascot:sp[1],st:sp[2],c1:sp[3],c2:sp[4],conf,prestige,fac:{arena:5,gym:5,weight:5,academic:5,lounge:5,tech:5},staff:{},roster:[],cash:250000+prestige*8000,rec:{w:0,l:0,cw:0,cl:0}};return t}
-
-function buildRoster(t){for(let i=0;i<14;i++){const p=makePlayer(R(1,3),null,null);p.tid=t.id;S.P[p.id]=p;t.roster.push(p.id);}autoSchol(t)}
-function autoSchol(t){t.roster.map(i=>S.P[i]).sort((a,b)=>b.ovr-a.ovr).forEach((p,i)=>p.sch=i<SCH_LIMIT)}
-
-function newGame(userTid,coachName,style){S={v:1,nid:1,year:2026,week:1,tid:userTid,teams:[],P:{},rec:[],sched:[],news:[],user:{rp:0,officials:0,opts:{fill:false}},log:[]};let id=0;CONFS.forEach((c,ci)=>c.s.forEach(sp=>S.teams.push(makeTeam(id++,ci,sp))));S.teams.forEach(buildRoster);const base=STYLES[style].s;S.coach={id:uid(),name:coachName||'Coach',style,rec:base.rec,dev:base.dev,tac:base.tac,cond:base.cond};S.teams[userTid].staff.hc=S.coach;makeSchedule();calibrate();refreshNeeds();genPool();newsAdd('Welcome to '+S.teams[userTid].name+'.');saveState();return S}
-
-function makeSchedule(){S.sched=[];let mid=1;for(let wk=1;wk<=8;wk++){S.sched[wk]=[];const teams=S.teams.map(t=>t.id);for(let i=0;i+1<teams.length;i+=2){S.sched[wk].push({id:mid++,wk,h:teams[i],a:teams[i+1],done:false})}}}
-
-function getLineup(t){return t.roster.map(i=>S.P[i]).slice(0,7)}
-function lineupStrength(t){return avg(getLineup(t).map((p,i)=>slotOvr(p,['S','OH','OH','MB','MB','OPP','L'][i])))}
-function slotOvr(p,pos){return ovrOf(p.a,pos)+(p.pos===pos?4:0)}
-
-function teamRatings(t){const L=getLineup(t);if(L.length<7)return {srv:40,rcv:40,atk:40,blk:40,dig:40,set:40,iq:40};const [s,o1,o2,m1,m2,op,li]=L;return {srv:avg(L.map(p=>p.a.srv)),rcv:.4*li.a.rcv+.25*o1.a.rcv+.25*o2.a.rcv+.1*op.a.rcv,atk:.27*o1.a.atk+.27*o2.a.atk+.26*op.a.atk+.1*m1.a.atk+.1*m2.a.atk,blk:.3*m1.a.blk+.3*m2.a.blk+.2*op.a.blk+.1*o1.a.blk+.1*o2.a.blk,dig:.35*li.a.dig+.2*o1.a.dig+.2*o2.a.dig+.15*op.a.dig+.1*s.a.dig,set:.7*s.a.set+.3*s.a.iq,iq:avg(L.map(p=>p.a.iq))}}
-
-function calibrate(){S.lg={off:68,def:66}}
-
-function simSet(A,B,target,srvSide,hAdv){let pa=0,pb=0,srv=srvSide;while(true){const rcvA=srv==='b';let pSO=rcvA?.62+.0032*(A.rcv* .35 + A.set*.25 + A.atk*.4 - (B.srv*.3+B.blk*.35+B.dig*.35)): .62+.0032*(B.rcv*.35+B.set*.25+B.atk*.4 - (A.srv*.3+A.blk*.35+A.dig*.35));pSO=clamp(pSO,0.3,0.88);const so=rf()<pSO;if(so){if(rcvA)pa++;else pb++;srv=rcvA?'a':'b'}else{if(rcvA)pb++;else pa++}if((pa>=target||pb>=target)&&Math.abs(pa-pb)>=2)return[pa,pb];if(pa+pb>60) return pa>pb?[pa,pb]:[pa,pb]}}
-
-function simMatchCore(tA,tB,neutral){const A=teamRatings(tA),B=teamRatings(tB);const hAdv=neutral?0:.008+tA.fac.arena*.0007;const sets=[];let a=0,b=0,srv=rf() < .5 ? 'a' : 'b';while(a<3&&b<3){const [x,y]=simSet(A,B,(a+b===4?15:25),srv,hAdv);sets.push([x,y]);if(x>y)a++;else b++;srv=srv==='a'?'b':'a'}return{sets,hs:a,as:b}}
-
-function distribute(total,ws){const out=ws.map(()=>0);const sum=ws.reduce((x,y)=>x+y,0);for(let i=0;i<total;i++){let r=rf()*sum,j=0;for(;j<ws.length-1;j++){r-=ws[j];if(r<=0)break}out[j]++}return out}
-
-function boxFor(t,pts,oppPts){const L=getLineup(t);const g=(p,k)=>Math.pow(Math.max(1,p.a[k])/70,2);const kw=L.map((p,i)=>[0,1,1,.6,.6,1.15,0][i]*g(p,'atk')+(i===0? .1:0));const bw=L.map((p,i)=>[.15,.35,.35,1.2,1.2,.5,0][i]*g(p,'blk'));const aw=L.map((p,i)=>(i===6?.4:1)*g(p,'srv'));const dw=L.map((p,i)=>[.5,.9,.9,.25,.25,.4,1.6][i]*g(p,'dig',1.4));const K=distribute(Math.round(pts*.55+R(-2,2)),kw);const B=distribute(Math.round(pts*.09+R(-1,2)),bw);const A=distribute(Math.round(pts*.06+R(-1,1)),aw);const D=distribute(Math.round(oppPts*.12+R(-1,2)),dw);const as=L.map((p,i)=>i===0?Math.round(K.reduce((x,y)=>x+y,0)*.92):0);return L.map((p,i)=>({id:p.id,name:p.name,pos:['S','OH','OH','MB','MB','OPP','L'][i],k:K[i],b:B[i],a:A[i],d:D[i],as:as[i]}))}
-
-function eloUpdate(tA,tB,aWon,margin){const e=1/(1+Math.pow(10,(tB.elo - tA.elo)/400));const k=22*(1+margin*.12);const d=k*((aWon?1:0)-e);tA.elo+=d;tB.elo-=d}
-
-// Stubs for missing utilities
-function newsAdd(text,type,meta){S.news.unshift({text,week:S.week,year:S.year,type,meta});if(S.news.length>200)S.news.pop();renderNews();}
-function genPool(){S._miles=[]}
-function recWeekTick(){/* simple weekly reset for news throttles */}
-function ranks(p){return {n: R(1,200)}}
-function archiveSeason(p,t){/*noop*/}
-
-function playMatch(m){const tH=S.teams[m.h],tA=S.teams[m.a];const res=simMatchCore(tH,tA,!!m.neutral);m.done=true;m.res=res;const pH=res.sets.reduce((s,x)=>s+x[0],0);const pA=res.sets.reduce((s,x)=>s+x[1],0);const bh=boxFor(tH,pH,pA);const ba=boxFor(tA,pA,pH);applyStats(bh,res.sets.length);applyStats(ba,res.sets.length);const hw=res.hs>res.as;newsAdd(`${tH.name} ${res.hs}-${res.as} ${tA.name}`);}
-
-function applyStats(box,nsets){for(const r of box){const p=S.P[r.id];if(!p)continue;p.gp=(p.gp||0)+1;p.st_ = p.st_ || {};p.st_.k=(p.st_.k||0)+ (r.k||0);}}
-
-function simWeekMatches(){const ms=S.sched[S.week]||[];for(const m of ms)if(!m.done)playMatch(m);S.week++;if(S.week>8)S.week=1}
-
-function refreshNeeds(){/*simple stub*/}
-
-// UI glue
-function populateTeamSelect(){const sel=document.getElementById('teamSelect');sel.innerHTML='';S.teams.forEach(t=>{const opt=document.createElement('option');opt.value=t.id;opt.textContent=t.name;sel.appendChild(opt)})}
-function renderNews(){const el=document.getElementById('news');el.innerHTML='';for(const n of S.news.slice(0,20)){const d=document.createElement('div');d.className='newsrow';d.textContent=`[W${n.week}] ${n.text}`;el.appendChild(d)}}
-function renderRoster(){const el=document.getElementById('roster');el.innerHTML='';const t=S.teams[S.tid];if(!t)return;const ul=document.createElement('ul');t.roster.map(id=>S.P[id]).forEach(p=>{const li=document.createElement('li');li.textContent=`${p.name} (${p.pos}) OVR:${Math.round(p.ovr)}`;ul.appendChild(li)});el.appendChild(ul)}
-function renderState(){document.getElementById('state').textContent=JSON.stringify({year:S.year,week:S.week,team:S.teams[S.tid].name,news:S.news.length},null,2)}
-
-// Persistence
-function saveState(){localStorage.setItem('court_state',JSON.stringify(S));newsAdd('Game saved.');}
-function loadState(){const s=localStorage.getItem('court_state');if(!s)return false;S=JSON.parse(s);renderAll();newsAdd('Game loaded.');return true}
-
-function renderAll(){populateTeamSelect();renderNews();renderRoster();renderState()}
-
-// Wire buttons
-document.getElementById('startBtn').addEventListener('click',()=>{const tid=Number(document.getElementById('teamSelect').value||0);const style=document.getElementById('styleSelect').value;newGame(tid,'Coach',style);renderAll()});
-document.getElementById('weekBtn').addEventListener('click',()=>{simWeekMatches();renderAll();saveState()});
-document.getElementById('seasonBtn').addEventListener('click',()=>{for(let i=0;i<8;i++){simWeekMatches()}renderAll();saveState()});
-document.getElementById('saveBtn').addEventListener('click',()=>saveState());document.getElementById('loadBtn').addEventListener('click',()=>{if(!loadState())alert('No save found')});
-
-// Initialize minimal default
-newGame(0,'Coach','recruiter');renderAll();
-</script>
 </body>
 </html>
